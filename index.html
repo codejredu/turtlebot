@@ -1,7 +1,7 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-T">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>סימולטור צב-בוט</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -55,7 +55,6 @@
             50% { transform: scale(1.05) rotate(var(--current-rotation, 0deg)); }
         }
     </style>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4" style="background-color: #000000;">
 
@@ -159,8 +158,8 @@
         ];
 
         const levelThemes = [
-            { name: "שדה ירוק", obstacleImage: "https://codejredu.github.io/turtlebot/bg/rose.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/flower.svg" },
-            { name: "חוף הים", obstacleIcon: "ph-seashell", obstacleColor: "text-orange-400", targetIcon: "ph-star", targetColor: "text-yellow-400" },
+            { name: "שדה ירוק", bgImage: "https://codejredu.github.io/turtlebot/bg/grass.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/rose.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/flower.svg" },
+            { name: "חוף הים", bgImage: "https://codejredu.github.io/turtlebot/bg/sand.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/starsee.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/oyster.svg" },
             { name: "בריכת החבצלות", obstacleIcon: "ph-leaf", obstacleColor: "text-green-600", targetIcon: "ph-flower", targetColor: "text-pink-400" },
             { name: "יער קסום", obstacleIcon: "ph-mushroom", obstacleColor: "text-red-500", targetIcon: "ph-sparkle", targetColor: "text-yellow-300" },
             { name: "אזור הררי", obstacleIcon: "ph-mountains", obstacleColor: "text-slate-600", targetIcon: "ph-diamond", targetColor: "text-cyan-400" },
@@ -204,7 +203,12 @@
             gridContainer.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
             gridContainer.style.gridTemplateRows = `repeat(${GRID_SIZE}, 1fr)`;
             const currentTheme = getThemeForLevel(level);
-            gridContainer.style.background = "url('https://codejredu.github.io/turtlebot/bg/grass.svg')";
+
+            if (currentTheme.bgImage) {
+                gridContainer.style.background = `url('${currentTheme.bgImage}')`;
+            } else {
+                gridContainer.style.background = "url('https://codejredu.github.io/turtlebot/bg/grass.svg')";
+            }
             gridContainer.style.backgroundSize = 'cover';
             gridContainer.style.backgroundPosition = 'center';
             
@@ -608,6 +612,5 @@
         // Initial setup
         resetGame();
     </script>
-<script type="module" src="/index.tsx"></script>
 </body>
 </html>
