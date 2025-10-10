@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>סימולטור צב-בוט</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Assistant', sans-serif;
+        }
+        #robot {
+            transition: all 0.5s ease-in-out;
+            filter: drop-shadow(4px 4px 6px rgba(0, 0, 0, 0.25));
+            z-index: 10;
+        }
+        .obstacle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #win-modal.show #win-modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+        #win-modal-content {
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        #robot.hit {
+            filter: grayscale(100%) brightness(80%) sepia(100%) hue-rotate(-50deg) saturate(600%) contrast(0.8);
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        #robot.executing {
+            animation: pulse 1s infinite;
+        }
+        /* Custom styles for vertical slider */
+        input[type=range][orient=vertical] {
+            writing-mode: bt-lr; /* IE */
+            -webkit-appearance: slider-vertical; /* WebKit */
+            width: 8px;
+            height: 175px;
+            padding: 0 5px;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0) rotate(var(--current-rotation, 0deg)); }
+            20%, 80% { transform: translate3d(2px, 0, 0) rotate(var(--current-rotation, 0deg)); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0) rotate(var(--current-rotation, 0deg)); }
+            40%, 60% { transform: translate3d(4px, 0, 0) rotate(var(--current-rotation, 0deg)); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1) rotate(var(--current-rotation, 0deg)); }
+            50% { transform: scale(1.05) rotate(var(--current-rotation, 0deg)); }
+        }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4" style="background-color: #000000;">
+
+    <div class="w-full max-w-7xl mx-auto">
+        <h1 class="text-4xl font-bold text-stone-100 mb-4 text-center">סימולטור צב-בוט</h1>
+        <div class="bg-white p-6 rounded-2xl shadow-xl">
+            <div class="flex flex-col lg:flex-row lg:items-start justify-center gap-8">
+
+                <!-- לוח המשחק -->
+                <div class="flex-grow flex flex-col items-center">
+                    <div id="frame-wrapper" class="bg-yellow-900 p-2.5 rounded-2xl shadow-lg">
+                        <div id="grid-container" class="relative rounded-lg overflow-hidden" dir="ltr">
+                            <!-- הצב יתווסף כאן באמצעות JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- סליידר צבעים -->
+                <div class="w-full lg:w-24 bg-stone-200 p-4 rounded-xl shadow-lg border-2 border-stone-300 flex flex-col items-center justify-center self-center lg:self-stretch">
+                    <h3 class="font-semibold text-center text-stone-700 mb-4">צבע הרשת</h3>
+                    <input id="grid-color-slider" type="range" min="0" max="5" value="0" orient="vertical" aria-label="שנה צבע קווי רשת">
+                </div>
+
+                <!-- לוח הבקרה -->
+                <div class="w-full lg:w-96 bg-blue-100 p-6 rounded-xl shadow-lg border-4 border-blue-300 flex flex-col" style="height: 555px;">
+                    <h2 class="text-2xl font-bold text-center mb-2 text-gray-800">לוח הבקרה</h2>
+                    <div class="text-center mb-4">
+                        <span class="text-lg font-semibold text-gray-700">שלב:</span>
+                        <span id="level-display" class="text-2xl font-bold text-green-600">1</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-4 mb-4">
+                        <button id="turn-left-btn" aria-label="פנה שמאלה" class="p-4 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-all flex flex-col items-center justify-center aspect-square">
+                            <i class="ph-bold ph-arrow-counter-clockwise text-4xl"></i>
+                        </button>
+                        <button id="move-forward-btn" aria-label="זוז קדימה" class="relative p-4 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-all flex flex-col items-center justify-center aspect-square">
+                            <i class="ph-bold ph-arrow-up text-4xl"></i>
+                            <div id="step-counter" class="absolute top-1 right-1 bg-white text-blue-500 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold cursor-pointer select-none ring-2 ring-blue-300">1</div>
+                        </button>
+                        <button id="turn-right-btn" aria-label="פנה ימינה" class="p-4 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-all flex flex-col items-center justify-center aspect-square">
+                            <i class="ph-bold ph-arrow-clockwise text-4xl"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="mb-4 flex flex-col flex-grow">
+                        <h3 class="font-semibold text-lg mb-2 text-gray-700">רצף הפקודות:</h3>
+                        <div id="command-queue" class="bg-white p-3 rounded-lg min-h-[60px] flex-grow flex flex-wrap content-start gap-2 border border-blue-200"></div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <button id="go-btn" aria-label="הפעל פקודות" class="w-full p-4 bg-orange-500 text-white rounded-lg shadow hover:bg-orange-600 transition-colors flex items-center justify-center text-lg">
+                           <i class="ph-bold ph-play text-3xl"></i>
+                       </button>
+                       <div class="grid grid-cols-2 gap-4">
+                           <button id="clear-btn" aria-label="נקה פקודות" class="p-4 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition-colors flex items-center justify-center">
+                               <i class="ph-bold ph-trash text-2xl"></i>
+                           </button>
+                           <button id="reset-btn" aria-label="אפס משחק" class="p-4 bg-gray-500 text-white rounded-lg shadow hover:bg-gray-600 transition-colors flex items-center justify-center">
+                               <i class="ph-bold ph-house text-2xl"></i>
+                           </button>
+                       </div>
+                   </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- חלון ניצחון -->
+    <div id="win-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div id="win-modal-content" class="bg-white p-8 rounded-xl shadow-2xl text-center transform transition-all scale-95 opacity-0">
+            <h2 class="text-4xl font-bold text-orange-500 mb-2">שלב <span id="win-level-num">1</span> הושלם!</h2>
+            <p class="text-lg text-stone-800 mb-6">כל הכבוד, השלמת את המשימה!</p>
+            <button id="play-again-btn" class="p-4 bg-orange-500 text-white rounded-lg shadow hover:bg-orange-600 transition-colors font-bold">
+                המשך לשלב הבא
+            </button>
+        </div>
+    </div>
+
+    <!-- לוח בחירת מספרים -->
+    <div id="number-picker-modal" class="hidden fixed z-50 bg-white p-2 rounded-lg shadow-xl border border-gray-200">
+        <div class="grid grid-cols-5 gap-1">
+            <button data-steps="1" class="number-picker-btn w-10 h-10 bg-blue-500 text-white font-bold rounded hover:bg-blue-600 transition-colors">1</button>
+            <button data-steps="2" class="number-picker-btn w-10 h-10 bg-blue-500 text-white font-bold rounded hover:bg-blue-600 transition-colors">2</button>
+            <button data-steps="3" class="number-picker-btn w-10 h-10 bg-blue-500 text-white font-bold rounded hover:bg-blue-600 transition-colors">3</button>
+            <button data-steps="4" class="number-picker-btn w-10 h-10 bg-blue-500 text-white font-bold rounded hover:bg-blue-600 transition-colors">4</button>
+            <button data-steps="5" class="number-picker-btn w-10 h-10 bg-blue-500 text-white font-bold rounded hover:bg-blue-600 transition-colors">5</button>
+        </div>
+    </div>
+    
+    <script>
+        const GRID_SIZE = 6;
+        const CELL_SIZE = 90; 
+        const START_POS = { x: 0, y: GRID_SIZE - 1, dir: 0 };
+        const GRID_COLORS = [
+            'border-yellow-800/30', // Earthy Brown
+            'border-white/50',      // White
+            'border-yellow-400/70', // Bright Yellow
+            'border-red-500/70',    // Red
+            'border-blue-500/70',   // Blue
+            'border-black/50'       // Black
+        ];
+
+        const levelThemes = [
+            { name: "שדה ירוק", obstacleImage: "https://codejredu.github.io/turtlebot/bg/rose.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/flower.svg" },
+            { name: "חוף הים", obstacleIcon: "ph-seashell", obstacleColor: "text-orange-400", targetIcon: "ph-star", targetColor: "text-yellow-400" },
+            { name: "בריכת החבצלות", obstacleIcon: "ph-leaf", obstacleColor: "text-green-600", targetIcon: "ph-flower", targetColor: "text-pink-400" },
+            { name: "יער קסום", obstacleIcon: "ph-mushroom", obstacleColor: "text-red-500", targetIcon: "ph-sparkle", targetColor: "text-yellow-300" },
+            { name: "אזור הררי", obstacleIcon: "ph-mountains", obstacleColor: "text-slate-600", targetIcon: "ph-diamond", targetColor: "text-cyan-400" },
+            { name: "מדבר צחיח", obstacleIcon: "ph-cactus", obstacleColor: "text-green-700", targetIcon: "ph-tree-palm", targetColor: "text-green-600" },
+            { name: "הר געש", obstacleIcon: "ph-fire", obstacleColor: "text-orange-500", targetIcon: "ph-egg", targetColor: "text-gray-300" },
+            { name: "מבוך גן", obstacleIcon: "ph-tree", obstacleColor: "text-green-700", targetIcon: "ph-fountain", targetColor: "text-blue-500" },
+            { name: "מקדש עתיק", obstacleIcon: "ph-columns", obstacleColor: "text-gray-500", targetIcon: "ph-treasure-chest", targetColor: "text-yellow-600" },
+            { name: "מעגל אלקטרוני", obstacleIcon: "ph-cpu", obstacleColor: "text-gray-400", targetIcon: "ph-plugs-connected", targetColor: "text-lime-400" },
+        ];
+
+        let robotState = { ...START_POS };
+        let commandQueue = [];
+        let executionInterval = null;
+        let level = 1;
+        let currentObstacles = [];
+        let currentTarget = {};
+        let forwardSteps = 1;
+
+        const gridContainer = document.getElementById('grid-container');
+        const commandQueueDisplay = document.getElementById('command-queue');
+        const goBtn = document.getElementById('go-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const moveForwardBtn = document.getElementById('move-forward-btn');
+        const turnLeftBtn = document.getElementById('turn-left-btn');
+        const turnRightBtn = document.getElementById('turn-right-btn');
+        const winModal = document.getElementById('win-modal');
+        const playAgainBtn = document.getElementById('play-again-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const levelDisplay = document.getElementById('level-display');
+        const stepCounterEl = document.getElementById('step-counter');
+        const numberPickerModalEl = document.getElementById('number-picker-modal');
+        const gridColorSlider = document.getElementById('grid-color-slider');
+        
+        const directionToRotation = [0, 90, 180, 270];
+
+        function createGrid() {
+            gridContainer.innerHTML = '';
+            gridContainer.style.width = `${GRID_SIZE * CELL_SIZE}px`;
+            gridContainer.style.height = `${GRID_SIZE * CELL_SIZE}px`;
+            gridContainer.style.display = 'grid';
+            gridContainer.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
+            gridContainer.style.gridTemplateRows = `repeat(${GRID_SIZE}, 1fr)`;
+            const currentTheme = getThemeForLevel(level);
+            gridContainer.style.background = "url('https://codejredu.github.io/turtlebot/bg/grass.svg')";
+            gridContainer.style.backgroundSize = 'cover';
+            gridContainer.style.backgroundPosition = 'center';
+            
+            const currentColorClass = GRID_COLORS[parseInt(gridColorSlider.value)];
+
+            for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+                const cell = document.createElement('div');
+                cell.className = `border ${currentColorClass}`;
+                gridContainer.appendChild(cell);
+            }
+
+            currentObstacles.forEach(obstacle => {
+                const cell = gridContainer.children[obstacle.y * GRID_SIZE + obstacle.x];
+                if (cell) {
+                    cell.classList.add('obstacle');
+                    let element;
+                    if (currentTheme.obstacleImage) {
+                        element = document.createElement('img');
+                        element.src = currentTheme.obstacleImage;
+                        element.className = 'w-full h-full object-contain p-1';
+                    } else {
+                        element = document.createElement('i');
+                        element.className = `ph-bold ${currentTheme.obstacleIcon} text-6xl ${currentTheme.obstacleColor} opacity-90`;
+                    }
+                    cell.appendChild(element);
+                }
+            });
+
+            const targetCell = gridContainer.children[currentTarget.y * GRID_SIZE + currentTarget.x];
+            if (targetCell && !targetCell.classList.contains('obstacle')) {
+                let element;
+                if (currentTheme.targetImage) {
+                    element = document.createElement('img');
+                    element.src = currentTheme.targetImage;
+                    element.className = 'w-full h-full object-contain p-1';
+                } else {
+                    element = document.createElement('i');
+                    element.className = `ph-bold ${currentTheme.targetIcon} text-6xl ${currentTheme.targetColor}`;
+                }
+                targetCell.style.display = 'flex';
+                targetCell.style.alignItems = 'center';
+                targetCell.style.justifyContent = 'center';
+                targetCell.appendChild(element);
+            }
+
+            const robot = document.createElement('img');
+            robot.id = 'robot';
+            robot.src = 'https://codejredu.github.io/claudejr/turtle.svg';
+            robot.className = 'absolute';
+            robot.style.width = `${CELL_SIZE * 0.8}px`;
+            robot.style.height = `${CELL_SIZE * 0.8}px`;
+            gridContainer.appendChild(robot);
+            updateRobotPosition();
+        }
+
+        function getThemeForLevel(lvl) {
+            if (lvl <= 7) { return levelThemes[lvl - 1]; }
+            const patternType = (lvl - 8) % 3;
+            return levelThemes[7 + patternType];
+        }
+
+        function updateRobotPosition() {
+            const robot = document.getElementById('robot');
+            if (!robot) return;
+            const offset = CELL_SIZE * 0.1;
+            robot.style.left = `${robotState.x * CELL_SIZE + offset}px`;
+            robot.style.top = `${robotState.y * CELL_SIZE + offset}px`;
+            const rotation = directionToRotation[robotState.dir];
+            robot.style.transform = `rotate(${rotation}deg)`;
+            robot.style.setProperty('--current-rotation', `${rotation}deg`);
+        }
+        
+        function updateLevelDisplay() {
+            levelDisplay.textContent = level;
+        }
+
+        function addCommand(command) {
+            if (isExecuting()) return;
+            commandQueue.push(command);
+            updateCommandDisplay();
+        }
+        
+        function clearCommands() {
+            if (isExecuting()) return;
+            commandQueue = [];
+            updateCommandDisplay();
+        }
+
+        function updateCommandDisplay() {
+            commandQueueDisplay.innerHTML = '';
+            commandQueue.forEach((cmd, index) => {
+                const commandWrapper = document.createElement('div');
+                commandWrapper.className = 'relative w-10 h-10 flex items-center justify-center';
+
+                const icon = document.createElement('i');
+                icon.className = 'text-3xl p-1 bg-blue-100 rounded border border-blue-200 block';
+                
+                let iconName = '';
+                if (typeof cmd === 'object' && cmd.command === 'forward') {
+                    iconName = 'ph-bold ph-arrow-up text-blue-500';
+                    const stepsDisplay = document.createElement('span');
+                    stepsDisplay.className = 'absolute text-xs font-bold text-blue-800 bg-white/70 rounded-full px-1 py-0.5 pointer-events-none';
+                    stepsDisplay.textContent = cmd.steps;
+                    commandWrapper.appendChild(stepsDisplay);
+                } else if (cmd === 'left') {
+                    iconName = 'ph-bold ph-arrow-counter-clockwise text-blue-500';
+                } else if (cmd === 'right') {
+                    iconName = 'ph-bold ph-arrow-clockwise text-blue-500';
+                }
+                icon.className += ` ${iconName}`;
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold leading-none hover:bg-red-700 transition-colors z-10';
+                deleteBtn.innerHTML = '&times;';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (isExecuting()) return;
+                    commandQueue.splice(index, 1);
+                    updateCommandDisplay();
+                };
+
+                commandWrapper.appendChild(icon);
+                commandWrapper.appendChild(deleteBtn);
+                commandWrapper.dataset.index = index;
+                commandQueueDisplay.appendChild(commandWrapper);
+            });
+        }
+        
+        function checkCollision(x, y) {
+            const isOutOfBounds = x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE;
+            const isObstacle = currentObstacles.some(obs => obs.x === x && obs.y === y);
+            return isOutOfBounds || isObstacle;
+        }
+        
+        function stopExecution(enableButtons = true) {
+            clearInterval(executionInterval);
+            executionInterval = null;
+            if (enableButtons) {
+                toggleButtons(true);
+            }
+            const robot = document.getElementById('robot');
+            if (robot) {
+                robot.classList.remove('executing');
+            }
+            document.querySelectorAll('#command-queue > div').forEach(wrapper => {
+                wrapper.firstElementChild.classList.remove('bg-yellow-200');
+            });
+        }
+
+        function executeCommands() {
+            if (isExecuting() || commandQueue.length === 0) return;
+            
+            toggleButtons(false);
+            const robot = document.getElementById('robot');
+            robot.classList.remove('hit');
+            robot.classList.add('executing');
+
+            let commandIndex = 0;
+            let stepCounter = 0;
+
+            executionInterval = setInterval(() => {
+                if (commandIndex >= commandQueue.length) {
+                    stopExecution();
+                    return;
+                }
+                
+                document.querySelectorAll('#command-queue > div').forEach(wrapper => {
+                   const icon = wrapper.querySelector('i');
+                   if (parseInt(wrapper.dataset.index) === commandIndex) {
+                       icon.classList.add('bg-yellow-200');
+                   } else {
+                       icon.classList.remove('bg-yellow-200');
+                   }
+                });
+
+                const command = commandQueue[commandIndex];
+                let commandCompleted = false;
+
+                if (typeof command === 'object' && command.command === 'forward') {
+                    let nextX = robotState.x, nextY = robotState.y;
+                    if (robotState.dir === 0) nextY--;      // North
+                    else if (robotState.dir === 1) nextX++; // East
+                    else if (robotState.dir === 2) nextY++; // South
+                    else if (robotState.dir === 3) nextX--; // West
+
+                    if (checkCollision(nextX, nextY)) {
+                        robot.classList.remove('executing');
+                        robot.classList.add('hit');
+                        stopExecution(false);
+                        setTimeout(() => toggleButtons(true), 500);
+                        return;
+                    }
+                    
+                    robotState.x = nextX;
+                    robotState.y = nextY;
+                    updateRobotPosition();
+                    
+                    stepCounter++;
+                    if (stepCounter >= command.steps) {
+                        commandCompleted = true;
+                    }
+
+                } else { // Simple command (left/right)
+                    if (command === 'left') { robotState.dir = (robotState.dir - 1 + 4) % 4; } 
+                    else if (command === 'right') { robotState.dir = (robotState.dir + 1) % 4; }
+                    updateRobotPosition();
+                    commandCompleted = true;
+                }
+
+                if (robotState.x === currentTarget.x && robotState.y === currentTarget.y) {
+                    stopExecution();
+                    setTimeout(showWinMessage, 600);
+                    return;
+                }
+
+                if (commandCompleted) {
+                    commandIndex++;
+                    stepCounter = 0;
+                }
+
+            }, 800);
+        }
+        
+        function findShortestPath(startPos, endPos, obstacles) {
+            const queue = [[startPos, 0]];
+            const visited = new Set([`${startPos.x},${startPos.y}`]);
+            const obstacleSet = new Set(obstacles.map(o => `${o.x},${o.y}`));
+            while (queue.length > 0) {
+                const [currentPos, distance] = queue.shift();
+                if (currentPos.x === endPos.x && currentPos.y === endPos.y) { return distance; }
+                const directions = [ { x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 } ];
+                for (const dir of directions) {
+                    const nextPos = { x: currentPos.x + dir.x, y: currentPos.y + dir.y };
+                    const posKey = `${nextPos.x},${nextPos.y}`;
+                    const isInBounds = nextPos.x >= 0 && nextPos.x < GRID_SIZE && nextPos.y >= 0 && nextPos.y < GRID_SIZE;
+                    if (isInBounds && !visited.has(posKey) && !obstacleSet.has(posKey)) {
+                        visited.add(posKey);
+                        queue.push([nextPos, distance + 1]);
+                    }
+                }
+            }
+            return null;
+        }
+
+        function setupLevel(level) {
+            const findEmptyCell = (avoid = []) => {
+                let pos, isValid = false, attempts = 0;
+                while (!isValid && attempts < 100) {
+                    pos = { x: Math.floor(Math.random() * GRID_SIZE), y: Math.floor(Math.random() * GRID_SIZE) };
+                    const isCollision = avoid.some(p => p && p.x === pos.x && p.y === pos.y);
+                    if (!isCollision) { isValid = true; }
+                    attempts++;
+                }
+                return isValid ? pos : { x: 0, y: 0 };
+            };
+
+            if (level <= 7) {
+                const obstacleCount = level + 3;
+                currentObstacles = [];
+                const avoidList = [START_POS];
+                while(currentObstacles.length < obstacleCount && currentObstacles.length < (GRID_SIZE * GRID_SIZE) - 2) {
+                    const newObstacle = findEmptyCell(avoidList);
+                    currentObstacles.push(newObstacle);
+                    avoidList.push(newObstacle);
+                }
+                let targetPlaced = false, placementAttempts = 0;
+                while(!targetPlaced && placementAttempts < 200) {
+                    const potentialTarget = findEmptyCell([START_POS, ...currentObstacles]);
+                    const pathLength = findShortestPath({ x: START_POS.x, y: START_POS.y }, potentialTarget, currentObstacles);
+                    if (pathLength !== null && pathLength >= 5) {
+                        currentTarget = potentialTarget;
+                        targetPlaced = true;
+                    }
+                    placementAttempts++;
+                }
+                if (!targetPlaced) {
+                    console.warn(`Failed to place a valid target for level ${level}.`);
+                    return false;
+                }
+            } else {
+                currentObstacles = [];
+                const patternType = (level - 8) % 3;
+                switch(patternType) {
+                    case 0: // "Corridor"
+                        for (let y = 0; y < GRID_SIZE; y++) {
+                            if (y !== 1) currentObstacles.push({ x: 2, y });
+                            if (y !== 4) currentObstacles.push({ x: 4, y });
+                        }
+                        currentTarget = { x: 5, y: 0 }; break;
+                    case 1: // "Wall"
+                         for (let x = 0; x < GRID_SIZE; x++) { if (x !== 3) currentObstacles.push({ x, y: 2 }); }
+                        currentTarget = { x: 5, y: 0 }; break;
+                    case 2: // "S-shape"
+                        for(let x = 1; x < 5; x++) currentObstacles.push({x: x, y: 1});
+                        for(let x = 2; x < 6; x++) currentObstacles.push({x: x, y: 3});
+                        currentTarget = { x: 5, y: 4 }; break;
+                }
+            }
+            return true;
+        }
+        
+        function setupBoard() {
+            stopExecution();
+            robotState = { ...START_POS };
+            commandQueue = [];
+            let levelGenerated = false, attempts = 0;
+            while(!levelGenerated && attempts < 10) {
+                levelGenerated = setupLevel(level);
+                attempts++;
+            }
+            if (!levelGenerated) {
+                console.error("Could not generate a valid level. Resetting to level 1.");
+                level = 1;
+                setupLevel(level);
+            }
+            updateLevelDisplay();
+            updateCommandDisplay();
+            createGrid();
+            const robot = document.getElementById('robot');
+            if (robot) { robot.classList.remove('hit'); }
+            toggleButtons(true);
+        }
+
+        function resetGame() { level = 1; setupBoard(); }
+        function startNewLevel() { level++; setupBoard(); }
+        
+        function toggleButtons(enabled) {
+            const buttons = [goBtn, clearBtn, moveForwardBtn, turnLeftBtn, turnRightBtn, resetBtn, stepCounterEl];
+            buttons.forEach(btn => {
+                btn.disabled = !enabled;
+                btn.style.opacity = enabled ? '1' : '0.5';
+                btn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+            });
+        }
+        
+        function isExecuting() { return executionInterval !== null; }
+        
+        function showWinMessage() {
+            document.getElementById('win-level-num').textContent = level;
+            winModal.classList.remove('hidden');
+            setTimeout(() => winModal.classList.add('show'), 10);
+        }
+
+        function hideWinMessage() {
+            winModal.classList.remove('show');
+            setTimeout(() => winModal.classList.add('hidden'), 300);
+        }
+
+        moveForwardBtn.addEventListener('click', () => {
+             if (isExecuting()) return;
+             addCommand({ command: 'forward', steps: forwardSteps });
+        });
+        turnLeftBtn.addEventListener('click', () => addCommand('left'));
+        turnRightBtn.addEventListener('click', () => addCommand('right'));
+        goBtn.addEventListener('click', executeCommands);
+        clearBtn.addEventListener('click', clearCommands);
+        resetBtn.addEventListener('click', resetGame);
+        playAgainBtn.addEventListener('click', () => {
+            hideWinMessage();
+            startNewLevel();
+        });
+
+        // --- Number Picker Logic ---
+        stepCounterEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (isExecuting()) return;
+            const rect = stepCounterEl.getBoundingClientRect();
+            numberPickerModalEl.style.top = `${rect.bottom + 8}px`;
+            numberPickerModalEl.style.left = `${rect.left + rect.width / 2 - numberPickerModalEl.offsetWidth / 2}px`;
+            numberPickerModalEl.classList.remove('hidden');
+        });
+
+        document.querySelectorAll('.number-picker-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                forwardSteps = parseInt(btn.dataset.steps);
+                stepCounterEl.textContent = forwardSteps;
+                numberPickerModalEl.classList.add('hidden');
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!numberPickerModalEl.classList.contains('hidden') && !numberPickerModalEl.contains(e.target) && e.target !== stepCounterEl) {
+                numberPickerModalEl.classList.add('hidden');
+            }
+        });
+
+        // --- Grid Color Slider Logic ---
+        gridColorSlider.addEventListener('input', (event) => {
+            const colorIndex = parseInt(event.target.value);
+            const newColorClass = GRID_COLORS[colorIndex];
+            const cells = gridContainer.querySelectorAll('div:not(.obstacle > *)'); // Select only grid cells
+            
+            cells.forEach(cell => {
+                // More robustly remove old color classes
+                GRID_COLORS.forEach(c => cell.classList.remove(c));
+                cell.classList.add(newColorClass);
+            });
+        });
+
+
+        // Initial setup
+        resetGame();
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
