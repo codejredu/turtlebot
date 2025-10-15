@@ -1,4 +1,5 @@
- <!DOCTYPE html>
+
+<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-T">
@@ -55,11 +56,12 @@
             50% { transform: scale(1.05) rotate(var(--current-rotation, 0deg)); }
         }
     </style>
+<link rel="stylesheet" href="/index.css">
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4" style="background-color: #000000;">
+<body class="min-h-screen flex flex-col items-center justify-center p-4" style="background-image: url('https://codejredu.github.io/turtlebot/bg/bg.svg'); background-size: cover; background-position: center; background-repeat: no-repeat;">
 
     <div class="w-full max-w-7xl mx-auto">
-        <h1 class="text-4xl font-bold text-stone-100 mb-4 text-center">סימולטור צב-בוט</h1>
+        <h1 id="main-title" class="text-4xl font-bold text-stone-100 mb-4 text-center cursor-pointer select-none">סימולטור צב-בוט</h1>
         <div class="bg-white p-6 rounded-2xl shadow-xl">
             <div class="flex flex-col lg:flex-row lg:items-start justify-center gap-8">
 
@@ -72,11 +74,18 @@
                     </div>
                 </div>
 
-                <!-- סליידר צבעים -->
-                <div class="w-full lg:w-24 bg-stone-200 p-4 rounded-xl shadow-lg border-2 border-stone-300 flex flex-col items-center justify-center self-center lg:self-stretch">
-                    <h3 class="font-semibold text-center text-stone-700 mb-4">צבע הרשת</h3>
-                    <input id="grid-color-slider" type="range" min="0" max="5" value="0" orient="vertical" aria-label="שנה צבע קווי רשת">
+                <!-- פאנל סליידרים -->
+                <div class="w-full lg:w-28 bg-stone-200 p-4 rounded-xl shadow-lg border-2 border-stone-300 flex flex-col items-center justify-start self-center lg:self-stretch gap-6">
+                    <div class="w-full flex flex-col items-center">
+                        <h3 class="font-semibold text-center text-stone-700 mb-2">צבע הצב</h3>
+                        <input id="turtle-color-slider" type="range" min="0" max="360" value="0" class="w-full accent-blue-500">
+                    </div>
+                    <div class="w-full flex flex-col items-center">
+                        <h3 class="font-semibold text-center text-stone-700 mb-4">צבע הרשת</h3>
+                        <input id="grid-color-slider" type="range" min="0" max="5" value="0" orient="vertical" aria-label="שנה צבע קווי רשת">
+                    </div>
                 </div>
+
 
                 <!-- לוח הבקרה -->
                 <div class="w-full lg:w-96 bg-blue-100 p-6 rounded-xl shadow-lg border-4 border-blue-300 flex flex-col" style="height: 555px;">
@@ -85,7 +94,7 @@
                         <span class="text-lg font-semibold text-gray-700">שלב:</span>
                         <span id="level-display" class="text-2xl font-bold text-green-600">1</span>
                     </div>
-                    
+
                     <div class="grid grid-cols-3 gap-4 mb-4">
                         <button id="turn-left-btn" aria-label="פנה שמאלה" class="p-4 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-all flex flex-col items-center justify-center aspect-square">
                             <i class="ph-bold ph-arrow-counter-clockwise text-4xl"></i>
@@ -112,7 +121,7 @@
                            <button id="clear-btn" aria-label="נקה פקודות" class="p-4 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition-colors flex items-center justify-center">
                                <i class="ph-bold ph-trash text-2xl"></i>
                            </button>
-                           <button id="reset-btn" aria-label="אפס משחק" class="p-4 bg-gray-500 text-white rounded-lg shadow hover:bg-gray-600 transition-colors flex items-center justify-center">
+                           <button id="reset-btn" aria-label="אפס שלב" class="p-4 bg-gray-500 text-white rounded-lg shadow hover:bg-gray-600 transition-colors flex items-center justify-center">
                                <i class="ph-bold ph-house text-2xl"></i>
                            </button>
                        </div>
@@ -144,6 +153,22 @@
         </div>
     </div>
     
+    <!-- Admin Panel -->
+    <div id="admin-panel" class="hidden fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-2xl z-50 w-64">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-lg">מצב ניהול</h3>
+            <button id="close-admin-panel-btn" class="text-2xl leading-none text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <div class="space-y-3">
+            <div class="flex items-center gap-2">
+                <label for="level-input" class="flex-shrink-0">קפוץ לשלב:</label>
+                <input type="number" id="level-input" min="1" class="w-full bg-gray-700 text-white rounded px-2 py-1 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" dir="ltr">
+            </div>
+            <button id="go-to-level-btn" class="w-full bg-blue-600 hover:bg-blue-700 rounded py-2 transition-colors">עבור</button>
+            <button id="regenerate-level-btn" class="w-full bg-green-600 hover:bg-green-700 rounded py-2 transition-colors">צור שלב מחדש</button>
+        </div>
+    </div>
+
     <script>
         const GRID_SIZE = 6;
         const CELL_SIZE = 90; 
@@ -160,11 +185,11 @@
         const levelThemes = [
             { name: "שדה ירוק", bgImage: "https://codejredu.github.io/turtlebot/bg/grass.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/rose.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/flower.svg" },
             { name: "חוף הים", bgImage: "https://codejredu.github.io/turtlebot/bg/sand.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/starsee.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/oyster.svg" },
-            { name: "בריכת החבצלות", obstacleIcon: "ph-leaf", obstacleColor: "text-green-600", targetIcon: "ph-flower", targetColor: "text-pink-400" },
-            { name: "יער קסום", obstacleIcon: "ph-mushroom", obstacleColor: "text-red-500", targetIcon: "ph-sparkle", targetColor: "text-yellow-300" },
-            { name: "אזור הררי", obstacleIcon: "ph-mountains", obstacleColor: "text-slate-600", targetIcon: "ph-diamond", targetColor: "text-cyan-400" },
-            { name: "מדבר צחיח", obstacleIcon: "ph-cactus", obstacleColor: "text-green-700", targetIcon: "ph-tree-palm", targetColor: "text-green-600" },
-            { name: "הר געש", obstacleIcon: "ph-fire", obstacleColor: "text-orange-500", targetIcon: "ph-egg", targetColor: "text-gray-300" },
+            { name: "מסלול מושלג", bgImage: "https://codejredu.github.io/turtlebot/bg/snow.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/flag.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/gate.svg" },
+            { name: "יער הביליס", bgImage: "https://codejredu.github.io/turtlebot/bg/biilis.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/tree.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/goldbox.svg" },
+            { name: "שדה אבנים", bgImage: "https://codejredu.github.io/turtlebot/bg/stonefiled.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/stone.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/cyclamen.svg" },
+            { name: "מדבר צחיח", bgImage: "https://codejredu.github.io/turtlebot/bg/desert.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/plam.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/camel.svg" },
+            { name: "מגרש גולף", bgImage: "https://codejredu.github.io/turtlebot/bg/golfield.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/goldhole.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/golfflag.svg" },
             { name: "מבוך גן", obstacleIcon: "ph-tree", obstacleColor: "text-green-700", targetIcon: "ph-fountain", targetColor: "text-blue-500" },
             { name: "מקדש עתיק", obstacleIcon: "ph-columns", obstacleColor: "text-gray-500", targetIcon: "ph-treasure-chest", targetColor: "text-yellow-600" },
             { name: "מעגל אלקטרוני", obstacleIcon: "ph-cpu", obstacleColor: "text-gray-400", targetIcon: "ph-plugs-connected", targetColor: "text-lime-400" },
@@ -177,6 +202,7 @@
         let currentObstacles = [];
         let currentTarget = {};
         let forwardSteps = 1;
+        let turtleHue = 0;
 
         const gridContainer = document.getElementById('grid-container');
         const commandQueueDisplay = document.getElementById('command-queue');
@@ -192,6 +218,7 @@
         const stepCounterEl = document.getElementById('step-counter');
         const numberPickerModalEl = document.getElementById('number-picker-modal');
         const gridColorSlider = document.getElementById('grid-color-slider');
+        const turtleColorSlider = document.getElementById('turtle-color-slider');
         
         const directionToRotation = [0, 90, 180, 270];
 
@@ -256,7 +283,7 @@
 
             const robot = document.createElement('img');
             robot.id = 'robot';
-            robot.src = 'https://codejredu.github.io/claudejr/turtle.svg';
+            robot.src = 'https://codejredu.github.io/turtlebot/bg/turtle.svg';
             robot.className = 'absolute';
             robot.style.width = `${CELL_SIZE * 0.8}px`;
             robot.style.height = `${CELL_SIZE * 0.8}px`;
@@ -279,6 +306,7 @@
             const rotation = directionToRotation[robotState.dir];
             robot.style.transform = `rotate(${rotation}deg)`;
             robot.style.setProperty('--current-rotation', `${rotation}deg`);
+            robot.style.filter = `hue-rotate(${turtleHue}deg) drop-shadow(4px 4px 6px rgba(0, 0, 0, 0.25))`;
         }
         
         function updateLevelDisplay() {
@@ -462,32 +490,111 @@
                     if (!isCollision) { isValid = true; }
                     attempts++;
                 }
-                return isValid ? pos : { x: 0, y: 0 };
+                return isValid ? pos : null;
             };
 
-            if (level <= 7) {
-                const obstacleCount = level + 3;
-                currentObstacles = [];
-                const avoidList = [START_POS];
-                while(currentObstacles.length < obstacleCount && currentObstacles.length < (GRID_SIZE * GRID_SIZE) - 2) {
-                    const newObstacle = findEmptyCell(avoidList);
-                    currentObstacles.push(newObstacle);
-                    avoidList.push(newObstacle);
+            if (level === 6) { // Special logic for level 6
+                let placementAttempts = 0;
+                while (placementAttempts < 50) {
+                    placementAttempts++;
+                    // Place target away from edges to allow surrounding
+                    const potentialTarget = {
+                        x: Math.floor(Math.random() * (GRID_SIZE - 2)) + 1,
+                        y: Math.floor(Math.random() * (GRID_SIZE - 2)) + 1,
+                    };
+
+                    const distance = Math.abs(potentialTarget.x - START_POS.x) + Math.abs(potentialTarget.y - START_POS.y);
+                    // Ensure target is far enough and not on start position
+                    if (distance < 4 || (potentialTarget.x === START_POS.x && potentialTarget.y === START_POS.y)) {
+                        continue;
+                    }
+                    
+                    currentTarget = potentialTarget;
+
+                    // Get all 8 neighbors to form a 'fort'
+                    const neighbors = [
+                        { x: currentTarget.x - 1, y: currentTarget.y - 1 }, { x: currentTarget.x, y: currentTarget.y - 1 }, { x: currentTarget.x + 1, y: currentTarget.y - 1 },
+                        { x: currentTarget.x - 1, y: currentTarget.y },                                                     { x: currentTarget.x + 1, y: currentTarget.y },
+                        { x: currentTarget.x - 1, y: currentTarget.y + 1 }, { x: currentTarget.x, y: currentTarget.y + 1 }, { x: currentTarget.x + 1, y: currentTarget.y + 1 },
+                    ];
+                    
+                    // Shuffle neighbors to pick random ones for opening
+                    for (let i = neighbors.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [neighbors[i], neighbors[j]] = [neighbors[j], neighbors[i]];
+                    }
+
+                    // Place obstacles, leaving 2 openings
+                    currentObstacles = neighbors.slice(0, 6); 
+                    
+                    // Ensure start position is not an obstacle
+                    currentObstacles = currentObstacles.filter(p => !(p.x === START_POS.x && p.y === START_POS.y));
+                    
+                    // Validate solvability
+                    if (findShortestPath({ x: START_POS.x, y: START_POS.y }, currentTarget, currentObstacles) !== null) {
+                         return true; // Solvable level found
+                    }
                 }
-                let targetPlaced = false, placementAttempts = 0;
-                while(!targetPlaced && placementAttempts < 200) {
-                    const potentialTarget = findEmptyCell([START_POS, ...currentObstacles]);
-                    const pathLength = findShortestPath({ x: START_POS.x, y: START_POS.y }, potentialTarget, currentObstacles);
-                    if (pathLength !== null && pathLength >= 5) {
-                        currentTarget = potentialTarget;
-                        targetPlaced = true;
+                return false; // Failed to generate a solvable level, let setupBoard retry
+
+            } else if (level <= 7) {
+                // Step 1: Place the target first, ensuring it's not too close to the start.
+                let targetPlaced = false;
+                let placementAttempts = 0;
+                while (!targetPlaced && placementAttempts < 100) {
+                    const potentialTarget = findEmptyCell([START_POS]);
+                    if (potentialTarget) {
+                        const distance = Math.abs(potentialTarget.x - START_POS.x) + Math.abs(potentialTarget.y - START_POS.y);
+                        if (distance >= 4) { // Ensure target is reasonably far
+                            currentTarget = potentialTarget;
+                            targetPlaced = true;
+                        }
                     }
                     placementAttempts++;
                 }
+
                 if (!targetPlaced) {
-                    console.warn(`Failed to place a valid target for level ${level}.`);
-                    return false;
+                    console.warn("Failed to place a target.");
+                    return false; // Let the main loop retry
                 }
+
+                // Step 2: Place obstacles around the target
+                const obstacleCount = level + 3;
+                currentObstacles = [];
+                
+                const getNeighbors = (pos, radius) => {
+                    const neighbors = [];
+                    for (let y = -radius; y <= radius; y++) {
+                        for (let x = -radius; x <= radius; x++) {
+                            if (x === 0 && y === 0) continue; // Skip the center cell
+                            const newX = pos.x + x;
+                            const newY = pos.y + y;
+                            if (newX >= 0 && newX < GRID_SIZE && newY >= 0 && newY < GRID_SIZE) {
+                                neighbors.push({ x: newX, y: newY });
+                            }
+                        }
+                    }
+                    return neighbors;
+                };
+
+                let potentialObstacleSpots = getNeighbors(currentTarget, 2);
+                
+                potentialObstacleSpots = potentialObstacleSpots.filter(p => !(p.x === START_POS.x && p.y === START_POS.y));
+
+                for (let i = potentialObstacleSpots.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [potentialObstacleSpots[i], potentialObstacleSpots[j]] = [potentialObstacleSpots[j], potentialObstacleSpots[i]];
+                }
+                
+                currentObstacles = potentialObstacleSpots.slice(0, Math.min(obstacleCount, potentialObstacleSpots.length));
+
+                // Step 3: Validate solvability
+                const path = findShortestPath({ x: START_POS.x, y: START_POS.y }, currentTarget, currentObstacles);
+
+                if (path === null) {
+                    return false; // Unsolvable, let setupBoard retry
+                }
+
             } else {
                 currentObstacles = [];
                 const patternType = (level - 8) % 3;
@@ -532,7 +639,23 @@
             toggleButtons(true);
         }
 
-        function resetGame() { level = 1; setupBoard(); }
+        function resetCurrentLevel() {
+            stopExecution();
+            robotState = { ...START_POS };
+            commandQueue = [];
+            updateCommandDisplay();
+            updateRobotPosition();
+            const robot = document.getElementById('robot');
+            if (robot) { robot.classList.remove('hit'); }
+            toggleButtons(true);
+        }
+
+        function resetGame() { 
+            level = 1; 
+            turtleHue = 0;
+            turtleColorSlider.value = 0;
+            setupBoard(); 
+        }
         function startNewLevel() { level++; setupBoard(); }
         
         function toggleButtons(enabled) {
@@ -565,7 +688,7 @@
         turnRightBtn.addEventListener('click', () => addCommand('right'));
         goBtn.addEventListener('click', executeCommands);
         clearBtn.addEventListener('click', clearCommands);
-        resetBtn.addEventListener('click', resetGame);
+        resetBtn.addEventListener('click', resetCurrentLevel);
         playAgainBtn.addEventListener('click', () => {
             hideWinMessage();
             startNewLevel();
@@ -607,10 +730,63 @@
                 cell.classList.add(newColorClass);
             });
         });
+        
+        // --- Turtle Color Slider Logic ---
+        turtleColorSlider.addEventListener('input', (event) => {
+            turtleHue = parseInt(event.target.value);
+            updateRobotPosition();
+        });
+
+        // --- Admin Panel Logic ---
+        const mainTitle = document.getElementById('main-title');
+        const adminPanel = document.getElementById('admin-panel');
+        const closeAdminPanelBtn = document.getElementById('close-admin-panel-btn');
+        const levelInput = document.getElementById('level-input');
+        const goToLevelBtn = document.getElementById('go-to-level-btn');
+        const regenerateLevelBtn = document.getElementById('regenerate-level-btn');
+
+        let clickCount = 0;
+        let clickTimer = null;
+
+        mainTitle.addEventListener('click', () => {
+            clickCount++;
+            if (clickTimer) {
+                clearTimeout(clickTimer);
+            }
+            clickTimer = setTimeout(() => {
+                clickCount = 0;
+            }, 1000); // Reset after 1 second of inactivity
+
+            if (clickCount === 5) {
+                adminPanel.classList.toggle('hidden');
+                clickCount = 0;
+                clearTimeout(clickTimer);
+            }
+        });
+
+        closeAdminPanelBtn.addEventListener('click', () => {
+            adminPanel.classList.add('hidden');
+        });
+
+        goToLevelBtn.addEventListener('click', () => {
+            const targetLevel = parseInt(levelInput.value);
+            if (targetLevel > 0) {
+                level = targetLevel;
+                setupBoard();
+                levelInput.value = '';
+            } else {
+                alert('נא להזין מספר שלב חוקי.');
+            }
+        });
+
+        regenerateLevelBtn.addEventListener('click', () => {
+            setupBoard();
+        });
 
 
         // Initial setup
         resetGame();
     </script>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>
