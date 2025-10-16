@@ -94,9 +94,8 @@
                         <button id="turn-left-btn" aria-label="פנה שמאלה" class="p-4 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-all flex flex-col items-center justify-center aspect-square">
                             <i class="ph-bold ph-arrow-counter-clockwise text-4xl"></i>
                         </button>
-                        <button id="move-forward-btn" aria-label="זוז קדימה" class="relative p-4 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-all flex flex-col items-center justify-center aspect-square">
+                        <button id="move-forward-btn" aria-label="זוז קדימה" class="p-4 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-all flex flex-col items-center justify-center aspect-square">
                             <i class="ph-bold ph-arrow-up text-4xl"></i>
-                            <div id="step-counter" class="absolute top-1 right-1 bg-white text-blue-500 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold cursor-pointer select-none ring-2 ring-blue-300">1</div>
                         </button>
                         <button id="turn-right-btn" aria-label="פנה ימינה" class="p-4 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-all flex flex-col items-center justify-center aspect-square">
                             <i class="ph-bold ph-arrow-clockwise text-4xl"></i>
@@ -188,6 +187,7 @@
             { name: "חניון", bgImage: "https://codejredu.github.io/turtlebot/bg/parkfield.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/carspark.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/jeeppark.svg" },
             { name: "חלל", bgImage: "https://codejredu.github.io/turtlebot/bg/spacebg.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/star.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/astro.svg" },
             { name: "מפעל הרובוטים", bgImage: "https://codejredu.github.io/turtlebot/bg/robotbg.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/robot.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/robotmatara.svg" },
+            { name: "כוורת הדבורים", bgImage: "https://codejredu.github.io/turtlebot/bg/beebg.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/bee.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/beehome.svg" },
         ];
 
         let robotState = { ...START_POS };
@@ -196,7 +196,6 @@
         let level = 1;
         let currentObstacles = [];
         let currentTarget = {};
-        let forwardSteps = 1;
 
         const gridContainer = document.getElementById('grid-container');
         const commandQueueDisplay = document.getElementById('command-queue');
@@ -209,7 +208,6 @@
         const playAgainBtn = document.getElementById('play-again-btn');
         const resetBtn = document.getElementById('reset-btn');
         const levelDisplay = document.getElementById('level-display');
-        const stepCounterEl = document.getElementById('step-counter');
         const numberPickerModalEl = document.getElementById('number-picker-modal');
         const gridColorSlider = document.getElementById('grid-color-slider');
         
@@ -679,8 +677,9 @@
         function startNewLevel() { level++; setupBoard(); }
         
         function toggleButtons(enabled) {
-            const buttons = [goBtn, clearBtn, moveForwardBtn, turnLeftBtn, turnRightBtn, resetBtn, stepCounterEl];
+            const buttons = [goBtn, clearBtn, moveForwardBtn, turnLeftBtn, turnRightBtn, resetBtn];
             buttons.forEach(btn => {
+                if (!btn) return;
                 btn.disabled = !enabled;
                 btn.style.opacity = enabled ? '1' : '0.5';
                 btn.style.cursor = enabled ? 'pointer' : 'not-allowed';
@@ -700,12 +699,19 @@
             setTimeout(() => winModal.classList.add('hidden'), 300);
         }
 
-        moveForwardBtn.addEventListener('click', () => {
+        moveForwardBtn.addEventListener('click', (e) => {
+             e.stopPropagation();
              if (isExecuting()) return;
-             addCommand({ command: 'forward', steps: forwardSteps });
-             // Reset step counter to 1 after adding command
-             forwardSteps = 1;
-             stepCounterEl.textContent = forwardSteps;
+             
+             if (!numberPickerModalEl.classList.contains('hidden')) {
+                numberPickerModalEl.classList.add('hidden');
+                return;
+             }
+
+             const rect = moveForwardBtn.getBoundingClientRect();
+             numberPickerModalEl.style.top = `${rect.top - numberPickerModalEl.offsetHeight - 8}px`;
+             numberPickerModalEl.style.left = `${rect.left + rect.width / 2 - numberPickerModalEl.offsetWidth / 2}px`;
+             numberPickerModalEl.classList.remove('hidden');
         });
         turnLeftBtn.addEventListener('click', () => addCommand('left'));
         turnRightBtn.addEventListener('click', () => addCommand('right'));
@@ -718,25 +724,16 @@
         });
 
         // --- Number Picker Logic ---
-        stepCounterEl.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (isExecuting()) return;
-            const rect = stepCounterEl.getBoundingClientRect();
-            numberPickerModalEl.style.top = `${rect.bottom + 8}px`;
-            numberPickerModalEl.style.left = `${rect.left + rect.width / 2 - numberPickerModalEl.offsetWidth / 2}px`;
-            numberPickerModalEl.classList.remove('hidden');
-        });
-
         document.querySelectorAll('.number-picker-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                forwardSteps = parseInt(btn.dataset.steps);
-                stepCounterEl.textContent = forwardSteps;
+                const steps = parseInt(btn.dataset.steps);
+                addCommand({ command: 'forward', steps: steps });
                 numberPickerModalEl.classList.add('hidden');
             });
         });
 
         document.addEventListener('click', (e) => {
-            if (!numberPickerModalEl.classList.contains('hidden') && !numberPickerModalEl.contains(e.target) && e.target !== stepCounterEl) {
+            if (!numberPickerModalEl.classList.contains('hidden') && !numberPickerModalEl.contains(e.target) && !e.target.closest('#move-forward-btn')) {
                 numberPickerModalEl.classList.add('hidden');
             }
         });
