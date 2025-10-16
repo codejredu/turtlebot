@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -58,7 +57,7 @@
     </style>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4" style="background-image: url('https://codejredu.github.io/turtlebot/bg/bg.svg'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+<body class="min-h-screen flex flex-col items-center justify-center p-4" style="background-color: #1f2937;">
 
     <div class="w-full max-w-7xl mx-auto">
         <h1 id="main-title" class="text-4xl font-bold text-stone-100 mb-4 text-center cursor-pointer select-none">סימולטור צב-בוט</h1>
@@ -76,10 +75,6 @@
 
                 <!-- פאנל סליידרים -->
                 <div class="w-full lg:w-28 bg-stone-200 p-4 rounded-xl shadow-lg border-2 border-stone-300 flex flex-col items-center justify-start self-center lg:self-stretch gap-6">
-                    <div class="w-full flex flex-col items-center">
-                        <h3 class="font-semibold text-center text-stone-700 mb-2">צבע הצב</h3>
-                        <input id="turtle-color-slider" type="range" min="0" max="360" value="0" class="w-full accent-blue-500">
-                    </div>
                     <div class="w-full flex flex-col items-center">
                         <h3 class="font-semibold text-center text-stone-700 mb-4">צבע הרשת</h3>
                         <input id="grid-color-slider" type="range" min="0" max="5" value="0" orient="vertical" aria-label="שנה צבע קווי רשת">
@@ -190,9 +185,9 @@
             { name: "שדה אבנים", bgImage: "https://codejredu.github.io/turtlebot/bg/stonefiled.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/stone.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/cyclamen.svg" },
             { name: "מדבר צחיח", bgImage: "https://codejredu.github.io/turtlebot/bg/desert.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/plam.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/camel.svg" },
             { name: "מגרש גולף", bgImage: "https://codejredu.github.io/turtlebot/bg/golfield.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/goldhole.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/golfflag.svg" },
-            { name: "מבוך גן", obstacleIcon: "ph-tree", obstacleColor: "text-green-700", targetIcon: "ph-fountain", targetColor: "text-blue-500" },
-            { name: "מקדש עתיק", obstacleIcon: "ph-columns", obstacleColor: "text-gray-500", targetIcon: "ph-treasure-chest", targetColor: "text-yellow-600" },
-            { name: "מעגל אלקטרוני", obstacleIcon: "ph-cpu", obstacleColor: "text-gray-400", targetIcon: "ph-plugs-connected", targetColor: "text-lime-400" },
+            { name: "חניון", bgImage: "https://codejredu.github.io/turtlebot/bg/parkfield.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/carspark.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/jeeppark.svg" },
+            { name: "חלל", bgImage: "https://codejredu.github.io/turtlebot/bg/spacebg.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/star.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/astro.svg" },
+            { name: "מפעל הרובוטים", bgImage: "https://codejredu.github.io/turtlebot/bg/robotbg.svg", obstacleImage: "https://codejredu.github.io/turtlebot/bg/robot.svg", targetImage: "https://codejredu.github.io/turtlebot/bg/robotmatara.svg" },
         ];
 
         let robotState = { ...START_POS };
@@ -202,7 +197,6 @@
         let currentObstacles = [];
         let currentTarget = {};
         let forwardSteps = 1;
-        let turtleHue = 0;
 
         const gridContainer = document.getElementById('grid-container');
         const commandQueueDisplay = document.getElementById('command-queue');
@@ -218,7 +212,6 @@
         const stepCounterEl = document.getElementById('step-counter');
         const numberPickerModalEl = document.getElementById('number-picker-modal');
         const gridColorSlider = document.getElementById('grid-color-slider');
-        const turtleColorSlider = document.getElementById('turtle-color-slider');
         
         const directionToRotation = [0, 90, 180, 270];
 
@@ -292,9 +285,8 @@
         }
 
         function getThemeForLevel(lvl) {
-            if (lvl <= 7) { return levelThemes[lvl - 1]; }
-            const patternType = (lvl - 8) % 3;
-            return levelThemes[7 + patternType];
+            const index = Math.min(lvl - 1, levelThemes.length - 1);
+            return levelThemes[index];
         }
 
         function updateRobotPosition() {
@@ -306,7 +298,7 @@
             const rotation = directionToRotation[robotState.dir];
             robot.style.transform = `rotate(${rotation}deg)`;
             robot.style.setProperty('--current-rotation', `${rotation}deg`);
-            robot.style.filter = `hue-rotate(${turtleHue}deg) drop-shadow(4px 4px 6px rgba(0, 0, 0, 0.25))`;
+            robot.style.filter = `drop-shadow(4px 4px 6px rgba(0, 0, 0, 0.25))`;
         }
         
         function updateLevelDisplay() {
@@ -536,9 +528,17 @@
                     }
                 }
                 return false; // Failed to generate a solvable level, let setupBoard retry
-
-            } else if (level <= 7) {
-                // Step 1: Place the target first, ensuring it's not too close to the start.
+            } else if (level === 8) { // Special maze logic for level 8
+                currentTarget = { x: 5, y: 0 };
+                currentObstacles = [
+                    {x: 2, y: 0},
+                    {x: 1, y: 1}, {x: 2, y: 1}, {x: 4, y: 1},
+                    {x: 1, y: 2}, {x: 4, y: 2},
+                    {x: 1, y: 3}, {x: 3, y: 3}, {x: 4, y: 3},
+                    {x: 3, y: 4},
+                    {x: 1, y: 5}, {x: 2, y: 5}, {x: 3, y: 5}
+                ];
+            } else if (level < 8) { // Random logic for levels 1-5, 7.
                 let targetPlaced = false;
                 let placementAttempts = 0;
                 while (!targetPlaced && placementAttempts < 100) {
@@ -553,12 +553,8 @@
                     placementAttempts++;
                 }
 
-                if (!targetPlaced) {
-                    console.warn("Failed to place a target.");
-                    return false; // Let the main loop retry
-                }
+                if (!targetPlaced) { return false; }
 
-                // Step 2: Place obstacles around the target
                 const obstacleCount = level + 3;
                 currentObstacles = [];
                 
@@ -566,7 +562,7 @@
                     const neighbors = [];
                     for (let y = -radius; y <= radius; y++) {
                         for (let x = -radius; x <= radius; x++) {
-                            if (x === 0 && y === 0) continue; // Skip the center cell
+                            if (x === 0 && y === 0) continue;
                             const newX = pos.x + x;
                             const newY = pos.y + y;
                             if (newX >= 0 && newX < GRID_SIZE && newY >= 0 && newY < GRID_SIZE) {
@@ -588,16 +584,42 @@
                 
                 currentObstacles = potentialObstacleSpots.slice(0, Math.min(obstacleCount, potentialObstacleSpots.length));
 
-                // Step 3: Validate solvability
-                const path = findShortestPath({ x: START_POS.x, y: START_POS.y }, currentTarget, currentObstacles);
-
-                if (path === null) {
-                    return false; // Unsolvable, let setupBoard retry
+                if (findShortestPath({ x: START_POS.x, y: START_POS.y }, currentTarget, currentObstacles) === null) {
+                    return false;
                 }
-
-            } else {
+            } else if (level === 9) { // Solvable challenging maze for level 9
+                currentTarget = { x: 5, y: 0 };
+                currentObstacles = [
+                    // Path 1: Up from start
+                    {x: 1, y: 5}, {x: 1, y: 4}, {x: 1, y: 3}, // Right wall
+                    {x: 0, y: 1}, // Top stopper
+                    // Path 2: Right at y=2
+                    {x: 2, y: 1}, // Top wall
+                    {x: 2, y: 3}, {x: 3, y: 3}, // Bottom wall
+                    {x: 4, y: 2}, // Right stopper
+                    // Path 3: Up at x=3
+                    {x: 2, y: 0}, // Left wall
+                    {x: 4, y: 1}, // Right wall
+                    // Extra blocks
+                    {x: 5, y: 2}, {x: 5, y: 3}, {x: 5, y: 4},
+                ];
+            } else if (level === 10) { // New complex maze for level 10
+                 currentTarget = { x: 5, y: 0 };
+                 currentObstacles = [
+                    // y=1
+                    {x: 0, y: 1}, {x: 2, y: 1}, {x: 3, y: 1}, {x: 4, y: 1}, {x: 5, y: 1},
+                    // y=2
+                    {x: 0, y: 2}, {x: 5, y: 2},
+                    // y=3
+                    {x: 0, y: 3}, {x: 1, y: 3}, {x: 2, y: 3}, {x: 4, y: 3}, {x: 5, y: 3},
+                    // y=4
+                    {x: 5, y: 4},
+                    // y=5
+                    {x: 2, y: 5}, {x: 3, y: 5}, {x: 4, y: 5}, {x: 5, y: 5}
+                ];
+            } else { // Patterned levels for 11+
                 currentObstacles = [];
-                const patternType = (level - 8) % 3;
+                const patternType = (level - 11) % 3;
                 switch(patternType) {
                     case 0: // "Corridor"
                         for (let y = 0; y < GRID_SIZE; y++) {
@@ -652,8 +674,6 @@
 
         function resetGame() { 
             level = 1; 
-            turtleHue = 0;
-            turtleColorSlider.value = 0;
             setupBoard(); 
         }
         function startNewLevel() { level++; setupBoard(); }
@@ -683,6 +703,9 @@
         moveForwardBtn.addEventListener('click', () => {
              if (isExecuting()) return;
              addCommand({ command: 'forward', steps: forwardSteps });
+             // Reset step counter to 1 after adding command
+             forwardSteps = 1;
+             stepCounterEl.textContent = forwardSteps;
         });
         turnLeftBtn.addEventListener('click', () => addCommand('left'));
         turnRightBtn.addEventListener('click', () => addCommand('right'));
@@ -731,12 +754,6 @@
             });
         });
         
-        // --- Turtle Color Slider Logic ---
-        turtleColorSlider.addEventListener('input', (event) => {
-            turtleHue = parseInt(event.target.value);
-            updateRobotPosition();
-        });
-
         // --- Admin Panel Logic ---
         const mainTitle = document.getElementById('main-title');
         const adminPanel = document.getElementById('admin-panel');
